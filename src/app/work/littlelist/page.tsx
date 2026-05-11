@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
+
+const CREAM = "#EEEDE3";
+const ORANGE = "#FD7B03";
+const GREEN = "#a1ff62";
+const INK = "#000000";
 
 const sidebarTags = [
   "Baby Registry",
@@ -18,14 +22,15 @@ const sidebarTags = [
 ];
 
 const sections = [
-  { id: "about", label: "Intro" },
-  { id: "challenges", label: "Challenges" },
-  { id: "research", label: "Research & Discovery" },
-  { id: "phases", label: "Project Phases & Solutions" },
-  { id: "homepage", label: "Outcome" },
-  { id: "takeaways", label: "Next Steps For LittleList" },
+  { id: "intro", label: "Intro" },
+  { id: "phases", label: "Project Phases" },
+  { id: "research", label: "Research" },
+  { id: "homepage", label: "Homepage" },
+  { id: "onboarding", label: "Onboarding" },
+  { id: "blog", label: "Blog" },
+  { id: "dashboard", label: "Dashboard & Checklist" },
+  { id: "outcome", label: "Outcome" },
 ];
-
 
 function useActiveSection() {
   const [active, setActive] = useState(sections[0].id);
@@ -61,16 +66,19 @@ function useSectionScroll(activeSection: string) {
     const container = scrollRef.current;
     if (!container) return;
 
-    const activeEl = container.querySelector(`[data-section="${activeSection}"]`) as HTMLElement | null;
+    const activeEl = container.querySelector(
+      `[data-section="${activeSection}"]`
+    ) as HTMLElement | null;
     if (!activeEl) return;
 
-    // Find the previous sibling chip to keep it visible
     const activeIdx = sections.findIndex((s) => s.id === activeSection);
-    const prevEl = activeIdx > 0
-      ? (container.querySelector(`[data-section="${sections[activeIdx - 1].id}"]`) as HTMLElement | null)
-      : null;
+    const prevEl =
+      activeIdx > 0
+        ? (container.querySelector(
+            `[data-section="${sections[activeIdx - 1].id}"]`
+          ) as HTMLElement | null)
+        : null;
 
-    // First section: stay at scroll 0 so pill aligns with 16px container edge
     if (activeIdx === 0) {
       container.scrollTo({ left: 0, behavior: "smooth" });
       return;
@@ -78,551 +86,657 @@ function useSectionScroll(activeSection: string) {
 
     const targetEl = prevEl || activeEl;
     const scrollLeft = targetEl.offsetLeft - 4;
-
     container.scrollTo({ left: scrollLeft, behavior: "smooth" });
   }, [activeSection]);
 
   return scrollRef;
 }
 
-const carouselImages = [
-  { src: "https://images.squarespace-cdn.com/content/v1/6453c9d6de856d555a322492/8a42fd95-5730-4897-ae36-26ca64c6c841/Screenshot+2026-02-06+at+14.27.47.png", alt: "Discovery 1", aspect: "w-[267px]" },
-  { src: "https://images.squarespace-cdn.com/content/v1/6453c9d6de856d555a322492/a08208c8-14ae-4a3b-8c55-a50e009d4951/Screenshot+2026-02-06+at+14.31.07.png", alt: "Discovery 2", aspect: "w-[600px]" },
-  { src: "https://images.squarespace-cdn.com/content/v1/6453c9d6de856d555a322492/2b3401a0-6fd7-4939-a3ed-49e537ed2f94/mom.png", alt: "Discovery 3", aspect: "w-[267px]" },
-  { src: "https://images.squarespace-cdn.com/content/v1/6453c9d6de856d555a322492/e7270d3d-8f9a-4b94-b361-9bc31f59efcf/Screenshot+2026-02-06+at+14.51.45.png", alt: "Discovery 4", aspect: "w-[496px]" },
-  { src: "https://images.squarespace-cdn.com/content/v1/6453c9d6de856d555a322492/75162e84-38e2-470b-acf7-1cfb73f21037/Screenshot+2026-02-08+at+16.54.49.png", alt: "Discovery 5", aspect: "w-[600px]" },
-  { src: "https://images.squarespace-cdn.com/content/v1/6453c9d6de856d555a322492/415ddb87-7fdd-412c-a901-25b86a883100/Screenshot+2026-02-08+at+16.45.12.png", alt: "Discovery 6", aspect: "w-[600px]" },
-];
-
-function VisualExamplesCarousel() {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [canPrev, setCanPrev] = useState(false);
-  const [canNext, setCanNext] = useState(true);
-  const [lightbox, setLightbox] = useState<number | null>(null);
-  const [zoomed, setZoomed] = useState(false);
-
-  // Drag-to-scroll state
-  const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0, hasMoved: false });
-
-  const updateButtons = useCallback(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    setCanPrev(el.scrollLeft > 2);
-    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
-  }, []);
-
-  useEffect(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    updateButtons();
-    el.addEventListener("scroll", updateButtons, { passive: true });
-    return () => el.removeEventListener("scroll", updateButtons);
-  }, [updateButtons]);
-
-  const scroll = (dir: 1 | -1) => {
-    const el = trackRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * el.clientWidth * 0.7, behavior: "smooth" });
-  };
-
-  // Drag handlers
-  const onMouseDown = (e: React.MouseEvent) => {
-    const el = trackRef.current;
-    if (!el) return;
-    dragState.current = { isDragging: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft, hasMoved: false };
-    el.style.cursor = "grabbing";
-  };
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!dragState.current.isDragging) return;
-    e.preventDefault();
-    const el = trackRef.current;
-    if (!el) return;
-    const x = e.pageX - el.offsetLeft;
-    const walk = x - dragState.current.startX;
-    if (Math.abs(walk) > 5) dragState.current.hasMoved = true;
-    el.scrollLeft = dragState.current.scrollLeft - walk;
-  };
-  const onMouseUp = () => {
-    const el = trackRef.current;
-    if (el) el.style.cursor = "grab";
-    dragState.current.isDragging = false;
-  };
-
-  // Lightbox keyboard nav
-  useEffect(() => {
-    if (lightbox === null) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setLightbox(null); setZoomed(false); }
-      if (e.key === "ArrowRight") { setLightbox((i) => i !== null ? (i + 1) % carouselImages.length : 0); setZoomed(false); }
-      if (e.key === "ArrowLeft") { setLightbox((i) => i !== null ? (i - 1 + carouselImages.length) % carouselImages.length : 0); setZoomed(false); }
-    };
-    document.addEventListener("keydown", handler);
-    document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = ""; };
-  }, [lightbox]);
-
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <div className="flex flex-col gap-4 pl-6">
-        <div className="flex items-center justify-between pr-6">
-          <span className="text-[20px] font-medium leading-[21px] text-[#0f172b]">Visual Examples</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => scroll(-1)}
-              disabled={!canPrev}
-              className="w-9 h-9 rounded-full border border-[#14151d]/20 flex items-center justify-center transition-opacity disabled:opacity-30"
-              aria-label="Previous"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 12L6 8l4-4" stroke="#14151d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            <button
-              onClick={() => scroll(1)}
-              disabled={!canNext}
-              className="w-9 h-9 rounded-full border border-[#14151d]/20 flex items-center justify-center transition-opacity disabled:opacity-30"
-              aria-label="Next"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="#14151d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-          </div>
-        </div>
-        <div
-          ref={trackRef}
-          className="overflow-x-auto scrollbar-hide select-none"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none", cursor: "grab" }}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseLeave={onMouseUp}
-        >
-          <div className="flex gap-4 h-[400px]">
-            {carouselImages.map((img, i) => (
-              <div
-                key={img.alt}
-                className={`h-full ${img.aspect} shrink-0 rounded-[10px] bg-[#f0f0f0] overflow-hidden relative cursor-pointer`}
-                onClick={() => { if (!dragState.current.hasMoved) setLightbox(i); }}
-              >
-                <Image src={img.src} alt={img.alt} fill className="object-cover" unoptimized />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Lightbox */}
-      {lightbox !== null && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-          onClick={() => { setLightbox(null); setZoomed(false); }}
-        >
-          {/* Close */}
-          <button
-            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-            onClick={() => { setLightbox(null); setZoomed(false); }}
-            aria-label="Close"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </button>
-
-          {/* Prev */}
-          <button
-            className="absolute left-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-            onClick={(e) => { e.stopPropagation(); setLightbox((lightbox - 1 + carouselImages.length) % carouselImages.length); setZoomed(false); }}
-            aria-label="Previous image"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-
-          {/* Image */}
-          <div
-            className={`relative transition-transform duration-300 ${zoomed ? "scale-150" : "scale-100"}`}
-            style={{ maxWidth: "85vw", maxHeight: "85vh" }}
-            onClick={(e) => { e.stopPropagation(); setZoomed(!zoomed); }}
-          >
-            <Image
-              src={carouselImages[lightbox].src}
-              alt={carouselImages[lightbox].alt}
-              width={1200}
-              height={800}
-              className={`object-contain max-h-[85vh] w-auto rounded-lg ${zoomed ? "cursor-zoom-out" : "cursor-zoom-in"}`}
-              unoptimized
-            />
-          </div>
-
-          {/* Next */}
-          <button
-            className="absolute right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-            onClick={(e) => { e.stopPropagation(); setLightbox((lightbox + 1) % carouselImages.length); setZoomed(false); }}
-            aria-label="Next image"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-
-          {/* Counter */}
-          <span className="absolute bottom-6 text-white/60 text-[14px]">
-            {lightbox + 1} / {carouselImages.length}
-          </span>
-        </div>
-      )}
-    </>
+    <span
+      className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] rounded-full px-3 py-1.5"
+      style={{
+        background: GREEN,
+        color: INK,
+        fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+      }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: INK }} />
+      {children}
+    </span>
   );
 }
+
+function MediaPlaceholder({
+  aspectRatio = "16/10",
+  label = "Image Placeholder",
+}: {
+  aspectRatio?: string;
+  label?: string;
+}) {
+  return (
+    <div
+      className="bg-neutral-100 rounded-[4px] flex items-center justify-center"
+      style={{ aspectRatio }}
+    >
+      <span className="text-neutral-400 text-[10px] tracking-[0.22em] uppercase font-semibold">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function StatBlock({
+  value,
+  label,
+  inverted = false,
+}: {
+  value: string;
+  label: string;
+  inverted?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span
+        className="font-semibold"
+        style={{
+          fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+          fontSize: "clamp(1.75rem, 2.4vw, 2.5rem)",
+          letterSpacing: "-0.02em",
+          lineHeight: 1.05,
+          color: inverted ? "#fff" : INK,
+        }}
+      >
+        {value}
+      </span>
+      <span
+        style={{
+          fontFamily: "var(--font-instrument-serif), serif",
+          fontSize: "clamp(0.875rem, 1vw, 1.0625rem)",
+          lineHeight: 1.3,
+          color: inverted ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)",
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2
+      style={{
+        fontFamily: "var(--font-instrument-serif), serif",
+        fontStyle: "italic",
+        fontWeight: 400,
+        fontSize: "clamp(1.875rem, 3.2vw, 2.625rem)",
+        lineHeight: 1.15,
+        letterSpacing: "-0.01em",
+      }}
+    >
+      {children}
+    </h2>
+  );
+}
+
+const bodyStyle: React.CSSProperties = {
+  fontFamily: "var(--font-inter-tight), system-ui, sans-serif",
+  fontSize: "17px",
+  lineHeight: 1.65,
+};
+
+const calloutStyle: React.CSSProperties = {
+  fontFamily: "var(--font-instrument-serif), serif",
+  fontSize: "clamp(1.125rem, 1.5vw, 1.5rem)",
+  lineHeight: 1.45,
+  letterSpacing: "-0.005em",
+};
 
 export default function LittleListPage() {
   const activeSection = useActiveSection();
   const scrollRef = useSectionScroll(activeSection);
 
   return (
-    <main className="pt-28 pb-32 bg-[#EFEAE6]">
-      <div className="w-[90%] max-w-[1400px] mx-auto">
-      {/* Back link */}
-      <Link
-        href="/work"
-        className="inline-flex items-center gap-2 text-[14px] text-[#7a7a7a] hover:text-[#232423] transition-colors mb-12"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M13 8H3M7 4l-4 4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Back to all work
-      </Link>
+    <main className="pt-28 pb-32" style={{ background: CREAM, color: INK }}>
+      <div className="w-[92%] max-w-[1400px] mx-auto">
+        {/* Back link */}
+        <Link
+          href="/work"
+          className="inline-flex items-center gap-2 text-[14px] hover:opacity-70 transition-opacity mb-10"
+          style={{ color: INK }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path
+              d="M13 8H3M7 4l-4 4 4 4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Back to all work
+        </Link>
 
-      {/* Title — full width above columns */}
-      <h1
-        className="text-[#232423] mb-12"
-      >
-        Turning overwhelm into clarity for both LittleList and expectant parents
-      </h1>
+        {/* Title */}
+        <h1
+          className="mb-10 max-w-[1100px]"
+          style={{
+            fontFamily: "var(--font-instrument-serif), serif",
+            fontWeight: 400,
+            fontSize: "clamp(2.25rem, 5.6vw, 72px)",
+            lineHeight: 1.08,
+            letterSpacing: "-0.01em",
+          }}
+        >
+          LittleList:{" "}
+          <span style={{ color: ORANGE }}>fixing acquisition and engagement</span>
+        </h1>
 
-      {/* Role + Year + Tools row — white pill cards */}
-      <div className="flex flex-wrap gap-2 items-center mb-12">
-        <div className="bg-white rounded-2xl px-3 py-2 shrink-0">
-          <span className="text-[14px] font-normal leading-[21px] text-[#14151d]">Solo Product Designer (Growth Focus)</span>
-        </div>
-        <div className="bg-white rounded-2xl px-3 py-2 shrink-0">
-          <span className="text-[14px] font-normal leading-[21px] text-[#14151d]">2024-2025</span>
-        </div>
-        <div className="bg-white rounded-2xl px-3 py-2 shrink-0">
-          <div className="flex items-center gap-6">
-            <Image src="https://res.cloudinary.com/dndgsrgbl/image/upload/v1774027774/Figma_pl9vyn.png" alt="Figma" width={18} height={27} unoptimized />
-            <Image src="https://res.cloudinary.com/dndgsrgbl/image/upload/v1774027775/ga_nydu4k.png" alt="Google Analytics" width={67} height={23} unoptimized />
-            <Image src="https://res.cloudinary.com/dndgsrgbl/image/upload/v1774027775/hotjar_skuhdb.png" alt="Hotjar" width={65} height={27} unoptimized />
-            <Image src="https://res.cloudinary.com/dndgsrgbl/image/upload/v1774030524/adobe2_egp24r.png" alt="Adobe" width={63} height={17} unoptimized />
-          </div>
-        </div>
-      </div>
-
-      {/* Hero strip image */}
-      <div className="w-full h-[500px] rounded-2xl overflow-hidden mb-24 relative">
-        <Image
-          src="https://images.unsplash.com/photo-1557683316-973673baf926?w=1600&q=80"
-          alt="Hero strip"
-          fill
-          className="object-cover"
-          unoptimized
-        />
-      </div>
-
-      {/* Two-column layout */}
-      <div className="flex flex-col lg:flex-row gap-24">
-        {/* Left column — scrolling content */}
-        <div className="flex-1 min-w-0">
-          {/* Intro card */}
-          <div className="bg-white/30 rounded-2xl p-6 flex flex-col gap-9 max-w-[982px]">
-            {/* Green pill label */}
-            <div className="flex">
-              <span className="inline-flex items-center gap-1.5 bg-[#a1ff62] text-[#14151d] text-[14px] leading-[20px] rounded-full px-3 py-1">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="3" fill="#14151d"/></svg>
-                Oh hello! What&apos;s going on here?
-              </span>
-            </div>
-
-            {/* Paragraph text */}
-            <div className="text-[16px] font-normal leading-[28px] text-[#14151d]">
-              <p>When I joined LittleList in late 2023, the idea was already strong. Expecting parents (the main audience) were landing on the site, but not sticking around or using it properly.</p>
-              <br />
-              <p>LittleList is meant to help parents get ready for a baby: understand what they actually need, keep track of it, share lists with family and friends for gifting (the core business model), or shop it themselves — and get support if they&apos;re unsure. Preparing for a baby, especially the first one, is overwhelming. The idea clearly resonated, but something was off — people were arriving and leaving.</p>
-              <br />
-              <p>The product already had most of the right features — checklists, expert advice, flexible gift lists. But it was built on top of a wedding registry model, so it felt more like a shopping tool than something that helps you think and plan. The messaging didn&apos;t match what parents were going through, and the experience didn&apos;t work well on mobile, which is where most people were.</p>
-            </div>
-
-            {/* Bold closing paragraph */}
-            <p className="text-[20px] font-medium leading-[32px] text-[#14151d]">
-              My job was to figure out what wasn&apos;t clicking, simplify the experience, and make the value obvious from the first touch. I focused on reshaping entry points, clarifying core features, and turning it into something that feels supportive, not transactional — so parents could actually use it, not just sign up and drop off.
-            </p>
-          </div>
-
-          {/* Discovery card */}
-          <div className="bg-white/30 rounded-2xl py-4 flex flex-col gap-9 max-w-[982px] mt-9">
-            {/* Header */}
-            <div className="px-6 flex flex-col gap-4">
-              <div className="flex">
-                <span className="inline-flex items-center gap-1.5 bg-[#a1ff62] text-[#14151d] text-[14px] leading-[20px] rounded-full px-3 py-1">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="3" fill="#14151d"/></svg>
-                  Discovery
-                </span>
-              </div>
-              <h2 className="text-[40px] font-medium leading-[84px] text-[#232423]">Turning overwhelm into clarity</h2>
-            </div>
-
-            {/* Description */}
-            <p className="px-6 text-[20px] font-normal leading-[36px] text-[#14151d]">
-              My job was to figure out what wasn&apos;t clicking, simplify the experience, and make the value obvious from the first touch. I focused on reshaping entry points, clarifying core features, and turning it into something that feels supportive, not transactional — so parents could actually use it, not just sign up and drop off.
-            </p>
-
-            {/* Validation badge */}
-            <div className="px-6">
-              <span className="inline-flex items-center gap-2 bg-white rounded-full px-3 py-2 text-[14px] leading-[21px] text-[#14151d]">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                  <path d="M3 14l4-6 4 3 6-8" stroke="#14151d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Validated with 98% confidence across all key metrics
-              </span>
-            </div>
-
-            {/* Stats row */}
-            <div className="grid grid-cols-4 gap-4 px-6">
-              <div className="flex flex-col items-start gap-2">
-                <span className="text-[48px] font-normal leading-[48px] text-[#0f172b]">87%</span>
-                <span className="text-[14px] text-[#62748e]">Success Rate</span>
-              </div>
-              <div className="flex flex-col items-start gap-2">
-                <span className="text-[48px] font-normal leading-[48px] text-[#0f172b]">2.4x</span>
-                <span className="text-[14px] text-[#62748e]">Growth Factor</span>
-              </div>
-              <div className="flex flex-col items-start gap-2">
-                <span className="text-[48px] font-normal leading-[48px] text-[#0f172b]">156</span>
-                <span className="text-[14px] text-[#62748e]">Key Insights</span>
-              </div>
-              <div className="flex flex-col items-start gap-2">
-                <span className="text-[48px] font-normal leading-[48px] text-[#0f172b]">43K</span>
-                <span className="text-[14px] text-[#62748e]">Data Points</span>
-              </div>
-            </div>
-
-            {/* Feature cards — 2x2 grid */}
-            <div className="px-6 flex flex-col gap-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-white rounded-[14px] p-6 flex flex-col gap-3">
-                  <div className="w-12 h-12 rounded-[10px] bg-[#efeae6] flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="#14151d" strokeWidth="1.5"/><circle cx="12" cy="12" r="7" stroke="#14151d" strokeWidth="1.5"/><circle cx="12" cy="12" r="10" stroke="#14151d" strokeWidth="1.5"/></svg>
-                  </div>
-                  <span className="text-[17px] font-medium leading-[28px] text-[#14151d]">Market Opportunity</span>
-                  <span className="text-[14px] font-normal leading-[23px] text-[#14151d]">Identified untapped market segments with high growth potential and minimal competition.</span>
-                </div>
-                <div className="bg-white rounded-[14px] p-6 flex flex-col gap-3">
-                  <div className="w-12 h-12 rounded-[10px] bg-[#efeae6] flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#14151d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  <span className="text-[17px] font-medium leading-[28px] text-[#14151d]">User Behavior</span>
-                  <span className="text-[14px] font-normal leading-[23px] text-[#14151d]">Uncovered critical user patterns that drive engagement and increase retention rates.</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-white rounded-[14px] p-6 flex flex-col gap-3">
-                  <div className="w-12 h-12 rounded-[10px] bg-[#efeae6] flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="#14151d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  <span className="text-[17px] font-medium leading-[28px] text-[#14151d]">Performance Gains</span>
-                  <span className="text-[14px] font-normal leading-[23px] text-[#14151d]">Discovered optimization opportunities that significantly improve system efficiency.</span>
-                </div>
-                <div className="bg-white rounded-[14px] p-6 flex flex-col gap-3">
-                  <div className="w-12 h-12 rounded-[10px] bg-[#efeae6] flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#14151d" strokeWidth="1.5"/><path d="M12 6v6l4 2" stroke="#14151d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  <span className="text-[17px] font-medium leading-[28px] text-[#14151d]">Innovation Paths</span>
-                  <span className="text-[14px] font-normal leading-[23px] text-[#14151d]">Revealed novel approaches to solving persistent challenges in the domain.</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Visual Examples — carousel */}
-            <VisualExamplesCarousel />
-          </div>
-
-          {/* Outcome card — inverted (dark) */}
-          <div className="bg-[#14151d] rounded-2xl py-4 flex flex-col gap-9 max-w-[982px] mt-9">
-            {/* Header */}
-            <div className="px-6 flex flex-col gap-4">
-              <div className="flex">
-                <span className="inline-flex items-center gap-1.5 bg-[#a1ff62] text-[#14151d] text-[14px] leading-[20px] rounded-full px-3 py-1">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="3" fill="#14151d"/></svg>
-                  Outcome
-                </span>
-              </div>
-              <h2 className="text-[40px] font-medium leading-[84px] text-white">What changed after all this</h2>
-            </div>
-
-            {/* Description */}
-            <p className="px-6 text-[20px] font-normal leading-[36px] text-[#efeae6]">
-              Over 14 months of phased improvements, LittleList went from a wedding registry clone to a focused baby planning platform. Every release was measured, tested, and iterated on — resulting in compound growth across all key metrics.
-            </p>
-
-            {/* Validation badge — inverted */}
-            <div className="px-6">
-              <span className="inline-flex items-center gap-2 bg-white/10 rounded-full px-3 py-2 text-[14px] leading-[21px] text-[#efeae6]">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                  <path d="M3 14l4-6 4 3 6-8" stroke="#efeae6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                All metrics measured over a 14-month period
-              </span>
-            </div>
-
-            {/* Stats row */}
-            <div className="grid grid-cols-4 gap-4 px-6">
-              <div className="flex flex-col items-start gap-2">
-                <span className="text-[48px] font-normal leading-[48px] text-white">+374%</span>
-                <span className="text-[14px] text-[#62748e]">Revenue (Pledges)</span>
-              </div>
-              <div className="flex flex-col items-start gap-2">
-                <span className="text-[48px] font-normal leading-[48px] text-white">+101%</span>
-                <span className="text-[14px] text-[#62748e]">Page Views</span>
-              </div>
-              <div className="flex flex-col items-start gap-2">
-                <span className="text-[48px] font-normal leading-[48px] text-white">~6X</span>
-                <span className="text-[14px] text-[#62748e]">Onboarding Conversion</span>
-              </div>
-              <div className="flex flex-col items-start gap-2">
-                <span className="text-[48px] font-normal leading-[48px] text-white">+128%</span>
-                <span className="text-[14px] text-[#62748e]">Published Lists</span>
-              </div>
-            </div>
-
-            {/* Feature cards — inverted 2x2 */}
-            <div className="px-6 flex flex-col gap-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-white/10 rounded-[14px] p-6 flex flex-col gap-3">
-                  <div className="w-12 h-12 rounded-[10px] bg-white/10 flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#efeae6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  <span className="text-[17px] font-medium leading-[28px] text-white">Acquisition Funnel</span>
-                  <span className="text-[14px] font-normal leading-[23px] text-[#efeae6]">Rebuilt entry points, messaging, and registration flow to convert organic traffic into active users.</span>
-                </div>
-                <div className="bg-white/10 rounded-[14px] p-6 flex flex-col gap-3">
-                  <div className="w-12 h-12 rounded-[10px] bg-white/10 flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#efeae6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  <span className="text-[17px] font-medium leading-[28px] text-white">Engagement & Retention</span>
-                  <span className="text-[14px] font-normal leading-[23px] text-[#efeae6]">Dashboard, checklist, and personalised recommendations gave users reasons to return.</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-white/10 rounded-[14px] p-6 flex flex-col gap-3">
-                  <div className="w-12 h-12 rounded-[10px] bg-white/10 flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="#efeae6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  <span className="text-[17px] font-medium leading-[28px] text-white">Onboarding Overhaul</span>
-                  <span className="text-[14px] font-normal leading-[23px] text-[#efeae6]">Replaced the generic form with a 5-step quiz that delivered immediate personalised value.</span>
-                </div>
-                <div className="bg-white/10 rounded-[14px] p-6 flex flex-col gap-3">
-                  <div className="w-12 h-12 rounded-[10px] bg-white/10 flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#efeae6" strokeWidth="1.5"/><path d="M12 6v6l4 2" stroke="#efeae6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  <span className="text-[17px] font-medium leading-[28px] text-white">Cross-team Impact</span>
-                  <span className="text-[14px] font-normal leading-[23px] text-[#efeae6]">Collaborated across Product, Marketing, Support, and Purchasing to amplify UX improvements.</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Full-width image — 5:4 ratio */}
-            <div className="px-6">
-              <div className="w-full aspect-[5/4] rounded-lg bg-[#2a2b2a] overflow-hidden relative">
-                <Image
-                  src="https://images.unsplash.com/photo-1557683316-973673baf926?w=1600&q=80"
-                  alt="Outcome overview"
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-              </div>
-            </div>
-          </div>
-
+        {/* Meta pills */}
+        <div className="flex flex-wrap items-center gap-2 mb-10">
+          <span className="bg-white rounded-full px-4 py-2 text-[13px] tracking-[0.16em] uppercase font-semibold" style={{ fontFamily: "var(--font-inter-tight)" }}>
+            Lead Product Designer · Growth
+          </span>
+          <span className="bg-white rounded-full px-4 py-2 text-[13px] tracking-[0.16em] uppercase font-semibold" style={{ fontFamily: "var(--font-inter-tight)" }}>
+            2024–2025
+          </span>
+          <span className="bg-white rounded-full px-4 py-2 text-[13px] tracking-[0.16em] uppercase font-semibold" style={{ fontFamily: "var(--font-inter-tight)" }}>
+            Figma · GA4 · Hotjar · Adobe
+          </span>
         </div>
 
-        {/* Right column — sticky sidebar */}
-        <aside className="lg:w-[320px] xl:w-[360px] shrink-0">
-          <div className="lg:sticky lg:top-28">
-            {/* White top section */}
-            <div className="bg-white rounded-t-2xl pt-3 pb-6 flex flex-col gap-6">
-              <div className="px-4 flex flex-col gap-3">
-                <div className="flex flex-col gap-2">
-                  <span className="text-[10px] font-semibold uppercase text-[#14151d] leading-[27.6px]">
-                    Project
-                  </span>
-                  <Image
-                    src="https://res.cloudinary.com/dndgsrgbl/image/upload/v1774202946/ll_logo_bw_sbg1x5.svg"
-                    alt="LittleList"
-                    width={128}
-                    height={27}
-                    unoptimized
-                  />
-                  <p className="text-[14px] font-normal leading-[21px] text-[#232423]">
-                    Baby registry &amp; baby shopping platform.<br />
-                    Turning overwhelm into clarity for both LittleList and expectant parents.
-                  </p>
-                </div>
-                <a
-                  href="https://www.littlelist.co.uk"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 bg-[#a1ff62] text-[#14151d] text-[14px] font-medium leading-[21px] rounded-sm px-4 py-2 w-fit"
-                >
-                  Visit Website
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </a>
-              </div>
+        {/* Hero media */}
+        <div className="mb-16">
+          <MediaPlaceholder aspectRatio="16/8" label="Hero Image / Video" />
+        </div>
 
-              {/* Tags */}
-              <div className="px-4 flex flex-wrap gap-1.5">
-                {sidebarTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="bg-[#f9f5f2] text-[14px] text-[#232423] rounded-lg px-2 py-1 leading-[21px]"
+        {/* Two-column layout */}
+        <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
+          {/* Left column — content */}
+          <div className="flex-1 min-w-0 flex flex-col gap-8">
+            {/* Intro */}
+            <section
+              id="intro"
+              className="bg-white rounded-[4px] p-6 md:p-10 flex flex-col gap-6"
+            >
+              <SectionLabel>Intro</SectionLabel>
+              <SectionHeading>Oh hello! What&rsquo;s going on here?</SectionHeading>
+              <div style={bodyStyle} className="flex flex-col gap-4">
+                <p>
+                  I joined LittleList at an interesting stage for the business — the startup was already fully launched and functional, and the concept seemed to be getting a good response from users. With decent marketing support, people were coming to the LittleList website, but leaving almost immediately. My task was to identify the acquisition blockers and get the cogs moving.
+                </p>
+                <p>
+                  LittleList is part of Cambium Group, which also runs three wedding gift list services. The platform was built on the same tech stack and user flows as its sister brands — an approach that got the MVP live quickly, but wasn&rsquo;t tailored to the very different needs of first-time parents navigating an overwhelming life stage.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-6 pt-6 border-t border-black/10">
+                <StatBlock value="+374%" label="pledges" />
+                <StatBlock value="+101%" label="page views" />
+                <StatBlock value="+128%" label="published lists" />
+                <StatBlock value="~6×" label="conversion rate" />
+              </div>
+            </section>
+
+            {/* Phases */}
+            <section
+              id="phases"
+              className="bg-white rounded-[4px] p-6 md:p-10 flex flex-col gap-6"
+            >
+              <SectionLabel>Project Phases</SectionLabel>
+              <SectionHeading>14 months, six phases</SectionHeading>
+              <p style={calloutStyle} className="text-black/80">
+                A phased plan, executed alongside Product, Marketing, Support, and Purchasing — each release measured, then iterated on before the next.
+              </p>
+
+              <div className="flex flex-col gap-3 mt-2">
+                {[
+                  { phase: "Phase 1", when: "Nov–Dec 2023", title: "UX Audit & Research" },
+                  { phase: "Phase 2", when: "Jan–Mar 2024", title: "Strategy & Roadmap" },
+                  { phase: "Phase 3", when: "April 2024", title: "Homepage Redesign", results: "ATL value +75% · Engagement time +54% · Bounce rate −14%" },
+                  { phase: "Phase 4", when: "August 2024", title: "Onboarding & Personalised Recommendations", results: "Completion 35% → 80% · TYFR add-to-list 13% → 38% · Returning users +24%" },
+                  { phase: "Phase 5", when: "Nov 2024–Jan 2025", title: "Dashboard, Checklist & Add More Products" },
+                  { phase: "Phase 6", when: "Dec 2024–Jan 2025", title: "Navigation & Category Improvements" },
+                  { phase: "Throughout", when: "2024–Q1 2025", title: "Continuous Improvements", results: "Baby Brains queries +37% YoY" },
+                ].map(({ phase, when, title, results }) => (
+                  <div
+                    key={phase + when}
+                    className="border border-black/10 rounded-[4px] p-4 flex flex-col gap-1"
                   >
-                    {tag}
-                  </span>
+                    <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                      <span
+                        className="text-[11px] uppercase tracking-[0.22em] font-semibold"
+                        style={{ fontFamily: "var(--font-inter-tight)" }}
+                      >
+                        {phase} · {when}
+                      </span>
+                    </div>
+                    <span
+                      className="text-[17px] font-medium"
+                      style={{ fontFamily: "var(--font-inter-tight)" }}
+                    >
+                      {title}
+                    </span>
+                    {results && (
+                      <span
+                        style={{
+                          fontFamily: "var(--font-instrument-serif), serif",
+                          fontSize: "15px",
+                          lineHeight: 1.45,
+                          color: "rgba(0,0,0,0.7)",
+                        }}
+                      >
+                        {results}
+                      </span>
+                    )}
+                  </div>
                 ))}
               </div>
-            </div>
+            </section>
 
-            {/* Dark bottom section — scroll nav */}
-            <div className="bg-[#14151d] rounded-b-2xl pt-2 pb-4 flex flex-col overflow-hidden">
-              <div className="px-4">
-                <span className="text-[10px] font-semibold uppercase text-[#efeae6] leading-[27.6px]">
-                  Going through sections
-                </span>
+            {/* Research */}
+            <section
+              id="research"
+              className="bg-white rounded-[4px] p-6 md:p-10 flex flex-col gap-6"
+            >
+              <SectionLabel>Research & Discovery</SectionLabel>
+              <SectionHeading>UX audit & user interviews</SectionHeading>
+              <div style={bodyStyle} className="flex flex-col gap-4">
+                <p>
+                  I started by going through the website flows myself, then dug into the data — GA4 for traffic patterns, Hotjar for heatmaps and session recordings. The main entry points were the homepage (ads and socials), blog posts (organic), and product categories (organic + ads). The number of users who clicked &ldquo;Sign up&rdquo; was very low, and of those who started, only about 35% finished registration.
+                </p>
+                <p>
+                  We ran multiple interviews and collected feedback in one structured working file — sorted by Good / Neutral / Bad and Product / Logistics, then pulled out the key insights that shaped the order of changes we made.
+                </p>
               </div>
+
               <div
-                ref={scrollRef}
-                className="overflow-x-auto pl-4 pr-4 scrollbar-hide"
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                className="rounded-[4px] p-5 my-2"
+                style={{ background: GREEN }}
               >
-                <nav className="flex items-center gap-0 whitespace-nowrap h-9">
-                  {sections.map(({ id, label }, i) => (
-                    <span key={id} className="contents">
-                      <a
-                        href={`#${id}`}
-                        data-section={id}
-                        className={`text-[16px] shrink-0 transition-all duration-300 ${
-                          activeSection === id
-                            ? "bg-white text-[#14151d] font-medium px-3 py-1 rounded-full"
-                            : "text-[#efeae6] font-normal"
-                        }`}
-                      >
-                        {label}
-                      </a>
-                      {i < sections.length - 1 && (
-                        <span className="text-[13px] text-[#efeae6] mx-1 shrink-0">→</span>
-                      )}
+                <p style={calloutStyle}>
+                  <strong>We needed to unblock the acquisition funnel first;</strong> otherwise, there was no way to fix the rest.
+                </p>
+              </div>
+
+              <h3
+                className="text-[18px] font-semibold mt-2"
+                style={{ fontFamily: "var(--font-inter-tight)" }}
+              >
+                Strategic findings
+              </h3>
+              <ul className="flex flex-col gap-3" style={bodyStyle}>
+                {[
+                  <><strong>Homepage</strong> needs a clear value prop, trust signals, and better visibility for products and recommendations.</>,
+                  <><strong>Onboarding</strong> needs to bring more value to the experience instead of being a long, boring form.</>,
+                  <><strong>Baby Experts</strong> — actual humans users can call or message — are a massive USP.</>,
+                  <><strong>Dashboard and Checklist</strong> are great features; they&rsquo;re just not delivering the value they should currently.</>,
+                  <><strong>Navigation</strong> needs improvement, through the catalogue and informational pages. More cross-linking is needed.</>,
+                  <>Users want to add <strong>products from other sites</strong> to their list. The option existed but was limited and hidden.</>,
+                  <>The <strong>blog</strong> gets great organic traffic — but it ends there. People are not moving further into the website.</>,
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span
+                      className="shrink-0 mt-2 w-1.5 h-1.5 rounded-full"
+                      style={{ background: ORANGE }}
+                    />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+                <MediaPlaceholder aspectRatio="4/3" label="Audit screenshot" />
+                <MediaPlaceholder aspectRatio="4/3" label="Heatmap" />
+                <MediaPlaceholder aspectRatio="4/3" label="Interview notes" />
+              </div>
+            </section>
+
+            {/* Homepage */}
+            <section
+              id="homepage"
+              className="bg-white rounded-[4px] p-6 md:p-10 flex flex-col gap-6"
+            >
+              <SectionLabel>Homepage Redesign</SectionLabel>
+              <SectionHeading>Less text, more doing</SectionHeading>
+              <div style={bodyStyle} className="flex flex-col gap-4">
+                <p>
+                  The homepage is one of the website&rsquo;s entry points and needed clearer messaging and more actionable elements. Busy, on-the-go users — 85% on mobile — view LittleList differently from wedding gift lists, which are usually explored at home on bigger screens.
+                </p>
+                <p className="font-medium">A few key conceptual changes vs. the old version:</p>
+                <ul className="flex flex-col gap-2 pl-1">
+                  {[
+                    "Less text, more actionable elements.",
+                    "Enough actionable elements within the first screen to grab users who don't scroll.",
+                    "Clear messaging about what LittleList does.",
+                    "Improved mobile experience.",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span
+                        className="shrink-0 mt-2 w-1.5 h-1.5 rounded-full"
+                        style={{ background: ORANGE }}
+                      />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  Results 3 weeks after launch already indicated higher acquisition quality and more engaged users — likely because the homepage now clearly communicates what LittleList is and what you can do here. More actionable links drove users into categories and products, positively impacting browsing depth, engagement, and add-to-list rates.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                <MediaPlaceholder aspectRatio="4/3" label="Old homepage" />
+                <MediaPlaceholder aspectRatio="4/3" label="New homepage" />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-6 pt-6 border-t border-black/10">
+                <StatBlock value="+75%" label="add-to-list value" />
+                <StatBlock value="+54%" label="avg engagement time" />
+                <StatBlock value="−14%" label="bounce rate" />
+                <StatBlock value="+12%" label="page views" />
+                <StatBlock value="+99%" label="add-to-list quantity" />
+                <StatBlock value="+32%" label="add-to-list per user" />
+                <StatBlock value="+55%" label="lists published" />
+                <StatBlock value="+89%" label="sale value" />
+              </div>
+            </section>
+
+            {/* Onboarding */}
+            <section
+              id="onboarding"
+              className="bg-white rounded-[4px] p-6 md:p-10 flex flex-col gap-6"
+            >
+              <SectionLabel>Onboarding</SectionLabel>
+              <SectionHeading>From form to personalisation quiz</SectionHeading>
+              <div style={bodyStyle} className="flex flex-col gap-4">
+                <p>
+                  Only about 35% of users who started onboarding actually finished it. Looking at data, interviews, and a bit of intuition — there wasn&rsquo;t enough value or expectation-setting around whether the product would solve their problem, or at least bring them some joy.
+                </p>
+                <p>
+                  The old onboarding was a simple form which, once completed, led to a generic &ldquo;Thank you for registering&rdquo; page with some popular products.
+                </p>
+                <p>
+                  We replaced the form with a <strong>personalisation quiz</strong> — a win-win: a source of personalisation and curiosity for users, and more completed onboardings (plus more knowledge about our users) for us.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                <MediaPlaceholder aspectRatio="9/16" label="Old onboarding" />
+                <MediaPlaceholder aspectRatio="9/16" label="Quiz step 1" />
+                <MediaPlaceholder aspectRatio="9/16" label="Personalised TYFR" />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-6 pt-6 border-t border-black/10">
+                <StatBlock value="35% → 80%" label="onboarding completion" />
+                <StatBlock value="13% → 38%" label="TYFR add-to-list" />
+                <StatBlock value="45% → 53%" label="first-session add-to-list" />
+                <StatBlock value="+24%" label="returning users" />
+              </div>
+            </section>
+
+            {/* Blog */}
+            <section
+              id="blog"
+              className="bg-white rounded-[4px] p-6 md:p-10 flex flex-col gap-6"
+            >
+              <SectionLabel>Blog</SectionLabel>
+              <SectionHeading>Blog changes didn&rsquo;t work out</SectionHeading>
+              <div style={bodyStyle} className="flex flex-col gap-4">
+                <p>
+                  Blog articles were getting a large amount of organic hits, so we planned a &ldquo;quick win&rdquo;: a small informational block, cross-links to related content, and more readable formatting.
+                </p>
+                <p>
+                  It turned out that readers landing on &ldquo;Top baby names&rdquo;-type articles (our most popular) and people who actually became users were two different audiences — blog readers mostly visited for fun and left after one article. The best we achieved with the first iteration was readers moving on to a couple more articles, but no conversions.
+                </p>
+                <p>
+                  Given other priorities, we moved on — with the plan to return to the blog with more time for deeper research.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                <MediaPlaceholder aspectRatio="4/3" label="Old blog post" />
+                <MediaPlaceholder aspectRatio="4/3" label="New blog post" />
+              </div>
+            </section>
+
+            {/* Dashboard & Checklist */}
+            <section
+              id="dashboard"
+              className="bg-white rounded-[4px] p-6 md:p-10 flex flex-col gap-6"
+            >
+              <SectionLabel>Dashboard & Checklist</SectionLabel>
+              <SectionHeading>From dead-end to discovery hub</SectionHeading>
+              <div style={bodyStyle} className="flex flex-col gap-4">
+                <p>
+                  After registration, users landed on a dashboard meant to be their organisational hub. It wasn&rsquo;t working — 51 seconds average before bouncing, frequent U-turns. A full rebuild wasn&rsquo;t possible due to developer availability, so we iterated:
+                </p>
+                <p>
+                  Cleaned up the layout, improved mobile nav, and gave users clear starting points — personalised recommendations, Baby Experts booking, and a checklist progress bar.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <MediaPlaceholder aspectRatio="16/10" label="Old dashboard (desktop)" />
+                <MediaPlaceholder aspectRatio="16/10" label="New dashboard (desktop)" />
+                <MediaPlaceholder aspectRatio="9/16" label="Old dashboard (mobile)" />
+                <MediaPlaceholder aspectRatio="9/16" label="New dashboard (mobile)" />
+              </div>
+
+              <h3
+                className="text-[20px] font-semibold mt-4"
+                style={{ fontFamily: "var(--font-inter-tight)" }}
+              >
+                The Checklist — trapped in the wrong format
+              </h3>
+              <div style={bodyStyle} className="flex flex-col gap-4">
+                <p>
+                  The checklist was one of LittleList&rsquo;s most loved features, trapped in the wrong format. It lived as a floating popup that looked like a chatbot icon — users kept dismissing it, and it was unusable on mobile. Data showed 10K clicks/month from 1.7K users but only 6% converted to Add-to-List (Hotjar confirmed most clicks were accidental). Yet the feature was highly requested in interviews — so the value was there.
+                </p>
+                <p>
+                  We gave it a proper home. Logged-out users see an animated landing page designed to make the checklist an incentive to register. Logged-in users get it as a dedicated dashboard tab, connected to their list with a sticky &ldquo;Back to Checklist&rdquo; button to keep them browsing.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <MediaPlaceholder aspectRatio="9/16" label="Old checklist popup" />
+                <MediaPlaceholder aspectRatio="9/16" label="New checklist tab" />
+              </div>
+
+              <div
+                className="rounded-[4px] p-5 my-2"
+                style={{ background: GREEN }}
+              >
+                <p style={calloutStyle}>
+                  Checklist interactions went from <strong>not even appearing in the site&rsquo;s top 10 events</strong> to ranking in the top 5 — a direct result of moving it from a dismissable popup to a dedicated page with proper visibility.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-6 pt-6 border-t border-black/10">
+                <StatBlock value="+71%" label="dashboard page views (2 months)" />
+                <StatBlock value="+25%" label="share_your_list events" />
+                <StatBlock value="+108%" label="group gifting" />
+              </div>
+            </section>
+
+            {/* Outcome */}
+            <section
+              id="outcome"
+              className="rounded-[4px] p-6 md:p-10 flex flex-col gap-6"
+              style={{ background: INK, color: "#fff" }}
+            >
+              <SectionLabel>Outcome</SectionLabel>
+              <h2
+                style={{
+                  fontFamily: "var(--font-instrument-serif), serif",
+                  fontStyle: "italic",
+                  fontWeight: 400,
+                  fontSize: "clamp(1.875rem, 3.2vw, 2.625rem)",
+                  lineHeight: 1.15,
+                  letterSpacing: "-0.01em",
+                  color: "#fff",
+                }}
+              >
+                From concept to product
+              </h2>
+              <div
+                style={{
+                  ...bodyStyle,
+                  color: "rgba(255,255,255,0.85)",
+                }}
+                className="flex flex-col gap-4"
+              >
+                <p>
+                  More than a year of teamwork, collaboration with users, and constant exploration moved LittleList from a good concept to a more flexible, usable product that started to match the rhythm and needs of its users — and it paid off: more engagement, retention, and trust have already led to more top-ups and pledges.
+                </p>
+                <p>
+                  There&rsquo;s still a long way to go for LittleList to become an everyday planning tool and a widely recognisable registry + store + planning solution for expecting families. But the first steps have been made, the acquisition funnel is unblocked, and LittleList is ready to take the next step.
+                </p>
+              </div>
+
+              <h3
+                className="text-[15px] uppercase tracking-[0.22em] font-semibold mt-4"
+                style={{
+                  fontFamily: "var(--font-inter-tight)",
+                  color: "rgba(255,255,255,0.6)",
+                }}
+              >
+                Headline outcomes
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-6 pt-2">
+                <StatBlock inverted value="+374%" label="pledges" />
+                <StatBlock inverted value="+101%" label="page views" />
+                <StatBlock inverted value="+128%" label="published lists" />
+                <StatBlock inverted value="0.6% → 2.4%" label="conversion rate (~4×)" />
+              </div>
+
+              <div className="mt-4">
+                <MediaPlaceholder aspectRatio="16/9" label="Outcome overview / final shot" />
+              </div>
+            </section>
+          </div>
+
+          {/* Right column — sticky sidebar */}
+          <aside className="lg:w-[300px] xl:w-[340px] shrink-0">
+            <div className="lg:sticky lg:top-28 flex flex-col">
+              {/* White top section — project info */}
+              <div className="bg-white rounded-t-[4px] pt-5 px-5 pb-6 flex flex-col gap-6">
+                <div className="flex flex-col gap-3">
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-[0.22em]"
+                    style={{
+                      fontFamily: "var(--font-inter-tight)",
+                      color: "rgba(0,0,0,0.6)",
+                    }}
+                  >
+                    Project
+                  </span>
+                  <span
+                    className="text-[24px] font-semibold leading-tight"
+                    style={{ fontFamily: "var(--font-inter-tight)" }}
+                  >
+                    LittleList
+                  </span>
+                  <p
+                    style={{
+                      fontFamily: "var(--font-instrument-serif), serif",
+                      fontSize: "15px",
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    Baby registry &amp; baby shopping platform. Turning overwhelm into clarity for both LittleList and expectant parents.
+                  </p>
+                  <a
+                    href="https://www.littlelist.co.uk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-[14px] font-medium rounded-full px-4 py-2 w-fit hover:opacity-80 transition-opacity mt-1"
+                    style={{ background: GREEN, color: INK, fontFamily: "var(--font-inter-tight)" }}
+                  >
+                    Visit Website
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M7 17L17 7M17 7H7M17 7V17"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </a>
+                </div>
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1.5">
+                  {sidebarTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[12px] rounded-[4px] px-2 py-1"
+                      style={{
+                        fontFamily: "var(--font-inter-tight)",
+                        background: CREAM,
+                        color: INK,
+                      }}
+                    >
+                      {tag}
                     </span>
                   ))}
-                </nav>
+                </div>
+              </div>
+
+              {/* Dark bottom — scroll nav */}
+              <div
+                className="rounded-b-[4px] pt-3 pb-4 flex flex-col overflow-hidden"
+                style={{ background: INK }}
+              >
+                <div className="px-4 mb-2">
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-[0.22em]"
+                    style={{
+                      fontFamily: "var(--font-inter-tight)",
+                      color: "rgba(255,255,255,0.6)",
+                    }}
+                  >
+                    Sections
+                  </span>
+                </div>
+                <div
+                  ref={scrollRef}
+                  className="overflow-x-auto pl-4 pr-4 scrollbar-hide"
+                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                >
+                  <nav className="flex items-center gap-0 whitespace-nowrap h-9">
+                    {sections.map(({ id, label }, i) => (
+                      <span key={id} className="contents">
+                        <a
+                          href={`#${id}`}
+                          data-section={id}
+                          className={`text-[15px] shrink-0 transition-all duration-300 ${
+                            activeSection === id
+                              ? "font-medium px-3 py-1 rounded-full"
+                              : "font-normal"
+                          }`}
+                          style={{
+                            fontFamily: "var(--font-inter-tight)",
+                            background: activeSection === id ? GREEN : "transparent",
+                            color: activeSection === id ? INK : "rgba(255,255,255,0.8)",
+                          }}
+                        >
+                          {label}
+                        </a>
+                        {i < sections.length - 1 && (
+                          <span className="text-[13px] mx-1 shrink-0" style={{ color: "rgba(255,255,255,0.5)" }}>
+                            →
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </nav>
+                </div>
               </div>
             </div>
-          </div>
-        </aside>
-      </div>
+          </aside>
+        </div>
       </div>
     </main>
   );
